@@ -12,13 +12,27 @@ contract HireContract {
     struct HireItem {
         uint256 itemId;
         address fromHire;
-        address toHired;
+        address toStaff;
         uint256 price;
-        bool isFinish;
         string des;
+        bool isAvailable;
+        bool isStart;
+        bool isApprove;
+        bool isHireFinish;
+        bool isStaffFinish;
+        Timer timer;
+
     }
 
     mapping(uint256 => HireItem) public hireItem;
+    
+    event HireItemList(
+        uint256 indexed hireId,
+        address indexed fromHire,
+        address toStaff,
+        uint256 price,
+        string des
+    );
 
     constructor() {
         itemCounter = 0;
@@ -26,7 +40,6 @@ contract HireContract {
     }
 
     // list hiring
-
     function listHiring(address from, uint256 price, string memory strDes) public {
         require(address(from).balance > price, "not enough price");
 
@@ -35,15 +48,34 @@ contract HireContract {
             from,
             address(0),
             price,
+            strDes,
+            true,
             false,
-            strDes
+            false,
+            false,
+            false, 
+            new Timer()
+
         );
 
+        emit HireItemList(
+            itemCounter,
+            from,
+            address(0),
+            price,
+            strDes
+        );
+        
         itemCounter += 1;
 
     }
 
     // apply job
+
+    function staffApproveJob(address to, uint256 hireId, bool isApprove) public {
+        require(hireItem[hireId].fromHire != to, "owner cannot approve");
+        hireItem[hireId].isApprove = isApprove;
+    }
 
     // deposit
     function hiredDeposit(address from, uint256 hireId, uint256 price) public {
@@ -58,11 +90,52 @@ contract HireContract {
 
     // return
     function backMoney(address to, uint256 itemId) public {
+      
 
     }
 
-    // finish job
+    // finish job by hire
+    function finihByHire(address from, uint256 hireId) public {
+        require(hireItem[hireId].fromHire == from, "not enough owner");
+        hireItem[hireId].isHireFinish = true;
 
+    }
 
+    // finish job by staff
+    function finihByStaff(address to, uint256 hireId) public {
+        require(hireItem[hireId].toStaff == to, "not enough owner");
+        require(hireItem[hireId].isStart == true, "project not start");
+        require(hireItem[hireId].isApprove == true, "staff not approve");
 
+        hireItem[hireId].isStaffFinish = true;
+    }
+
+    // cancel job 
+    function cancelHire(address to, uint256 hireId) public {
+        require(hireItem[hireId].fromHire == to, "not enough owner");
+        hireItem[hireId].isAvailable = false;
+
+    }
+}
+
+contract Timer {
+    uint _start;
+    uint _end;
+
+    modifier timerOver {
+        require(block.timestamp <= _end, "Timne over end");
+        _;
+    }
+
+    function start() public {
+        _start = block.timestamp;
+    }
+
+    function end(uint totalTime) public {
+        _end = totalTime+ _start;
+    } 
+    
+    function getTimeLeft() public timerOver view returns(uint) {
+        return _end - block.timestamp;
+    }
 }
